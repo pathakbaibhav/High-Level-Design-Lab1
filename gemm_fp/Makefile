@@ -1,5 +1,5 @@
 TARGET = testbench
-OBJS   = testbench.o testData.o gemm_cpu_fp.o
+OBJS   = testbench.o testData.o gemm_cpu_fp.o float_fixed.o
 CXXFLAGS += -Wall -g 
 LDLIBS = -lm
 
