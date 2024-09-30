@@ -1,5 +1,5 @@
 TARGET = testbench
-OBJS   = testbench.o testData.o 
+OBJS   = testbench.o testData.o gemm_cpu_fp.o
 CXXFLAGS += -Wall -g 
 
 # just define the dependencies, let makefile defaults do the rest
