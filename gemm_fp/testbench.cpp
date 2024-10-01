@@ -27,6 +27,23 @@ float matrix_snr(float* uut_gemm_cout, float* tst_matrix_Cout, int M, int N) {
 
 int main(int argc, char* argv[])
 {
+
+	float FloatPointValue = 0.213;
+	int scale = 16;
+	
+	// mapping
+	int FixedPointValue = roundup(FloatPointValue*(1<<scale));
+	
+	// here is your fixed point algorithm
+	FixedPointValue = FixedPointValue * 500;
+	
+	// remapping
+	float result = (float)(FixedPointValue)/(1<<scale);
+	
+	// printing result
+	printf("%.10f\n",FloatPointValue*500);
+	printf("%.10f\n",result);
+
 	float ALPHA=1.0;
 	float BETA=0.0;
 
@@ -39,22 +56,37 @@ int main(int argc, char* argv[])
 
 	printf("SNR for float gemm is %.10f dB\n", matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M, tst_dim_N));
 
-	int scale = 16;
+	// int scale = 16;
+	int bestScale=-1;
+	float bestSNR= -10000.0;
 
-	int* A_fixed = (int*)malloc(tst_dim_M * tst_dim_K * sizeof(int));	// Fixed point arrays
-    int* B_fixed = (int*)malloc(tst_dim_K * tst_dim_N * sizeof(int));
-    int* Cin_fixed = (int*)malloc(tst_dim_M * tst_dim_N * sizeof(int));
 
-	mm_float_to_fixed(tst_matrix_A, A_fixed, tst_dim_M, tst_dim_K, scale);	// Populate fixed-point A and B
-	mm_float_to_fixed(tst_matrix_B, B_fixed, tst_dim_K, tst_dim_N, scale);
+	for(int scale=1; scale < 32; scale++){
+		long long int* A_fixed = (long long int*)malloc(tst_dim_M * tst_dim_K * sizeof(long long int));	// Fixed point arrays
+	    long long int* B_fixed = (long long int*)malloc(tst_dim_K * tst_dim_N * sizeof(long long int));
+		long long int* Cin_fixed = (long long int*)calloc(tst_dim_M * tst_dim_N, sizeof(long long int)); // Calloc to clean the memory
 
-	fixed_cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, ALPHA, A_fixed, lda, B_fixed, ldb, BETA, Cin_fixed, ldc);	// gemm fixed
+		mm_float_to_fixed(tst_matrix_A, A_fixed, tst_dim_M, tst_dim_K, scale);	// Populate fixed-point A and B
+		mm_float_to_fixed(tst_matrix_B, B_fixed, tst_dim_K, tst_dim_N, scale);
 
-	mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale);	// Convert output back to fixed
+		fixed_cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, ALPHA, A_fixed, lda, B_fixed, ldb, BETA, Cin_fixed, ldc);	// gemm fixed
 
-	printf("SNR for fixed gemm is %.10f dB\n", matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M, tst_dim_N));	// SNR 
+		mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale*2);	// Convert output back to fixed, double scale
 
-	free(A_fixed);
-    free(B_fixed);
-    free(Cin_fixed);
+		float snr = matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M, tst_dim_N);
+
+		printf("SNR for fixed gemm is %.10f dB with scale=%d\n", snr, scale);	// SNR 
+
+		// Record max values
+		if (snr >= bestSNR) {
+			bestScale = scale;
+			bestSNR = snr;
+		}
+
+		free(A_fixed);
+	    free(B_fixed);
+	    free(Cin_fixed);
+		}
+
+	printf("Best snr is %.10f with scale=%d\n", bestSNR, bestScale);
 }
