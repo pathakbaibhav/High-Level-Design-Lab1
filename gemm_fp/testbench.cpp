@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 
-//Adding the header files created
+// Adding the header files created
 #include <iostream>
 #include "gemm_cpu_fp.h"
 #include "testData.h"
@@ -14,6 +14,24 @@ int roundup(float fp_number)
 	if(fp_number-fx_number >= 0.5)	fx_number++;
 
 	return	fx_number;
+}
+
+float matrix_snr(const float* uut_gemm_cout, const float* tst_matrix_Cout, int size)
+{
+	float signal_power = 0.0;	// Signal Strength
+	float noise_power = 0.0;	// Noise Strength
+	float diff;
+
+	for (int i = 0; i < size; ++i)
+	{
+		signal_power += tst_matrix_Cout[i] * tst_matrix_Cout[i];	// Square Signal
+		diff = uut_gemm_cout[i] - tst_matrix_Cout[i];				// Calculate Noise
+		noise_power += diff * diff;									// Square Noise
+	}
+
+	if (noise_power == 0)	return INFINITY;						// To handle perfect match
+
+	return 10 * log10(signal_power / noise_power);
 }
 
 int main(int argc, char* argv[])
@@ -45,9 +63,12 @@ int main(int argc, char* argv[])
 	int ldb = tst_dim_N;
 	int ldc = tst_dim_N;
 
+	float snr;
+
 	//Calling GEMM function
 	cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, ALPHA, tst_matrix_A, lda, tst_matrix_B, ldb, BETA, tst_matrix_Cin, ldc);
 
+	/*
 	//Print Sampled Comparision
 	unsigned int i;
 	cout << "Sampled Comparision: \n";
@@ -55,4 +76,8 @@ int main(int argc, char* argv[])
 	{
 		cout << "Function Call Output : " << tst_matrix_Cin[i] << "		Actual Output" << tst_matrix_Cout[i] << endl;
 	}
+	*/
+
+	snr = matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M*tst_dim_N);
+	cout << "SNR is " << snr << " db" << endl;
 }
