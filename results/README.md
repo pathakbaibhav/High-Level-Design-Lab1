@@ -42,3 +42,9 @@ We want to better understand the performance of Darknet and the bottlenecks that
 
 Evidently, `gemm_nn` is dominating, acounting for 95.56% of Darknet's runtime. We want to optimize this!
 
+### 2.3. Optimizing `gemm_nn` by Converting to Fixed-Point Arithmetic
+
+`gemm_nn` is Darknet's matrix multiplication function. In the existing codebase, it performs floating point multiplication in a triple-nested loop. Thus, for multiplication of two matrices with dimensions $M \times K$ and $K \times N$, `gemm_nn` will execute $M \times K \times N$ floating-point multiplications. Floating point operations are very slow, so this is an obvious area where we can improve. 
+
+Our solution is to use fixed point matrix multiplication. 
+
