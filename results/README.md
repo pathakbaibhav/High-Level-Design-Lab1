@@ -64,5 +64,9 @@ gemm(A, B, C):  // A, B (float) are inputs, C (float) is output
   return C
 ```
 
+#### 2.3.2. Tuning the `scale` Parameter
+
+`scale` is important, as it directly affects the numerical stability. It is also tricky to get right as it is application-dependent. In our initial test cases (provided to us), we optimized our scale by calculating a signal-to-noise ratio (SNR). This calculation compares the output matrix from our fixed-point GEMM implementation 
+
 
 
