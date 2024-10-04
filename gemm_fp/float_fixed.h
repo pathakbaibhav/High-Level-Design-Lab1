@@ -2,11 +2,11 @@
 
 #include <cstdint>
 
-// Roundup function
-int roundup(float fp_number);
+/** Roundup from provided testbench.cpp file */
+int32_t roundup(float fp_number);
 
-// Convert from float to fixed
+/** Floating to fixed point */
 void mm_float_to_fixed(const float* A_float, int32_t* A_fixed, int M, int N, int scale);
 
-// Convert from fixed to float
+/** Fixed to floating point */
 void mm_fixed_to_float(const int32_t* A_fixed, float* A_float, int M, int N, int scale);
