@@ -64,9 +64,35 @@ gemm(A, B, C):  // A, B (float) are inputs, C (float) is output
   return C
 ```
 
-#### 2.3.2. Tuning the `scale` Parameter
+#### 2.3.2. Tuning the `scale` Parameter using SNR
 
-`scale` is important, as it directly affects the numerical stability. It is also tricky to get right as it is application-dependent. In our initial test cases (provided to us), we optimized our scale by calculating a signal-to-noise ratio (SNR). This calculation compares the output matrix from our fixed-point GEMM implementation 
+`scale` is important, as it directly affects the numerical stability. It is also tricky to get right as it is application-dependent. In our initial test cases (provided to us), we optimized our scale by calculating a signal-to-noise ratio (SNR). This calculation compares the output matrix from our fixed-point GEMM implementation with the desired output values. We evaluated different values for `scale` in a loop and found that `scale=14` provided us the best SNR, 50.736 dB:
 
+Note the SNR of 103.845 dB for the original floating point implementation. The -186.470 dB at `scale=16` corresponds to overflow. 
+```
+SNR for float gemm is 103.8454589844 dB 
+SNR for fixed gemm is -5.6096243858 dB with scale=1
+SNR for fixed gemm is 1.9803683758 dB with scale=2
+SNR for fixed gemm is -0.5879516006 dB with scale=3
+SNR for fixed gemm is 3.2709569931 dB with scale=4
+SNR for fixed gemm is 2.7874507904 dB with scale=5
+SNR for fixed gemm is 6.5597982407 dB with scale=6
+SNR for fixed gemm is 9.7240753174 dB with scale=7
+SNR for fixed gemm is 14.3678665161 dB with scale=8
+SNR for fixed gemm is 20.3883152008 dB with scale=9
+SNR for fixed gemm is 24.6961498260 dB with scale=10
+SNR for fixed gemm is 31.2855548859 dB with scale=11
+SNR for fixed gemm is 36.7923278809 dB with scale=12
+SNR for fixed gemm is 42.3394432068 dB with scale=13
+SNR for fixed gemm is 50.7365760803 dB with scale=14
+SNR for fixed gemm is 8.3975419998 dB with scale=15
+SNR for fixed gemm is -186.4700622559 dB with scale=16
+```
+
+#### 2.3.3. Tuning `scale` in Darknet
+
+After implementing our fixed point GEMM function in Darknet, we evaluated its accuracy using by computing the MaP of our implemation against the original floating point GEMM. With `scale=14`, the results were very sad with MaP showing up as `nan`. This likely means we were getting overflow and that the data we're operating on in Darknet is different than what we used for the SNR testbench. 
+
+So, we had to tune it again, this time optimizing for the MaP rather than the SNR. We found that `scale=10` led to a MaP of 1.000, meaning that our Darknet with the fixed-point GEMM performs as well as the original floating point version. 
 
 
