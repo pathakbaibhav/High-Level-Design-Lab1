@@ -14,14 +14,14 @@ In this first lab, we were tasked with running, profiling, and improving Darknet
 
 For compilation and running the algorithm, we simply followed provided instructions to clone, build, and run the model. With this initial running, this model achieved solid detection performance:
 
-`
+```
 dog: 80%    
 bicycle: 37%    
 car: 71%    
 truck: 42%    
 truck: 61%    
 car: 40%  
-`
+```
 
 ### 2.2. Profiling Darknet with the YoloV3 Algorithm
 
@@ -44,7 +44,25 @@ Evidently, `gemm_nn` is dominating, acounting for 95.56% of Darknet's runtime. W
 
 ### 2.3. Optimizing `gemm_nn` by Converting to Fixed-Point Arithmetic
 
+#### 2.3.1. Implementation
+
 `gemm_nn` is Darknet's matrix multiplication function. In the existing codebase, it performs floating point multiplication in a triple-nested loop. Thus, for multiplication of two matrices with dimensions $M \times K$ and $K \times N$, `gemm_nn` will execute $M \times K \times N$ floating-point multiplications. Floating point operations are very slow, so this is an obvious area where we can improve. 
 
-Our solution is to use fixed point matrix multiplication. 
+Our solution is to use fixed point matrix multiplication. We did this by writing two new helper functions, `mm_float_to_fixed` and `mm_fixed_to_float`, and modifying the existing `gemm` function to operate on 32-bit integers rather than floating point values. As the name suggests, `mm_float_to_fixed` converts a matrix of floating point values to a matrix of 32-bit integers. A key input this is the `scale` value, which determines how much to multiply the initial floating point values by prior to casting them to an integer. This value is tuned to maximize precision while avoiding overflow, and getting it right leads to better overall numerical accuracy. We multiply by $2^\text{scale}$. `mm_fixed_to_float` simply reverses this operation, and divides the fixed values by $2^\text{scale}$
+
+Combining all of this, we have a new `gemm` function in Darknet that looks like this:
+
+```c
+gemm(A, B, C):  // A, B (float) are inputs, C (float) is output
+  A_fixed = mm_float_to_fixed(A)
+  B_fixed = mm_float_to_fixed(B)
+
+  C_fixed = gemm_fixed_point(A_fixed, B_fixed)
+
+  C = mm_fixed_to_float(C_fixed)
+
+  return C
+```
+
+
 
