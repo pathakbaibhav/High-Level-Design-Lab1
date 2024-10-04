@@ -8,18 +8,20 @@ int roundup(float fp_number)
     return fx_number;
 }
 
-void mm_float_to_fixed(const float* A_float, int32_t* A_fixed, int size, int scale) 
+void mm_float_to_fixed(const float* A_float, int32_t* A_fixed, int M, int N, int scale)
 {
-    for (int i = 0; i < size; i++) 
+    int size = M * N;
+    for (int i = 0; i < size; i++)
     {
         A_fixed[i] = roundup(A_float[i] * (1 << scale));
     }
 }
 
-void mm_fixed_to_float(const int32_t* A_fixed, float* A_float, int size, int scale) 
+void mm_fixed_to_float(const int32_t* A_fixed, float* A_float, int M, int N, int scale)
 {
-    for (int i = 0; i < size; i++) 
+    int size = M * N;
+    for (int i = 0; i < size; i++)
     {
-        A_float[i] = float(A_fixed[i]) / (1 << scale);
+        A_float[i] = (float)A_fixed[i] / (1 << scale);
     }
 }

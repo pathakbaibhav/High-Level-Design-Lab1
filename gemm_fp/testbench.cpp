@@ -76,45 +76,39 @@ int main(int argc, char* argv[])
 	snr = calculate_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M*tst_dim_N);
 	cout << "SNR for Float GEMM is: " << snr << " dB" << endl;
 
-	int size = tst_dim_M * tst_dim_N;
-	int size_A = tst_dim_M * tst_dim_K;
-	int size_B = tst_dim_K * tst_dim_N;
-
 	float best_snr = -std::numeric_limits<float>::infinity();
 	int best_scale = 0;
 
 	for (int scale = 1; scale <= 30; ++scale)
 	{
 		// Allocate memory for fixed-point matrices
-		int32_t* A_fixed = new int32_t[size_A];
-		int32_t* B_fixed = new int32_t[size_B];
-		int32_t* C_fixed = new int32_t[size];
-		float* C_result = new float[size];
+		int32_t* A_fixed = (int32_t*)malloc(tst_dim_M * tst_dim_K * sizeof(int32_t));
+		int32_t* B_fixed = (int32_t*)malloc(tst_dim_K * tst_dim_N * sizeof(int32_t));
+		int32_t* Cin_fixed = (int32_t*)calloc(tst_dim_M * tst_dim_N, sizeof(int32_t)); // Calloc to clean the memory
 
 		// Convert input matrices to fixed-point
-		mm_float_to_fixed(tst_matrix_A, A_fixed, size_A, scale);
-		mm_float_to_fixed(tst_matrix_B, B_fixed, size_B, scale);
-		mm_float_to_fixed(tst_matrix_Cin, C_fixed, size, scale);
+		mm_float_to_fixed(tst_matrix_A, A_fixed, tst_dim_M, tst_dim_K, scale);
+		mm_float_to_fixed(tst_matrix_B, B_fixed, tst_dim_K, tst_dim_N, scale);
 
 		// Perform fixed-point GEMM
-		fixed_cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, 1.0, A_fixed, lda, B_fixed, ldb, 1.0, C_fixed, ldc, scale);
+		fixed_cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, 1.0, A_fixed, lda, B_fixed, ldb, 1.0, Cin_fixed, ldc, scale);
 
 		// Convert result back to float for SNR calculation (using scale * 2)
-		mm_fixed_to_float(C_fixed, C_result, size, scale * 2);
+		mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale*2);
 
 		// Calculate SNR
-		snr = calculate_snr(tst_matrix_Cout, C_result, size);
-		cout << "Scale: " << scale << "	SNR for Fixed GEMM is " << snr << " dB" << endl;
+		snr = calculate_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M * tst_dim_N);
+		cout << "Scale: " << scale << "\tSNR for Fixed GEMM is " << snr << " dB" << endl;
+
 
 		if (snr > best_snr) {
 			best_snr = snr;
 			best_scale = scale;
 		}
 
-		delete[] A_fixed;
-		delete[] B_fixed;
-		delete[] C_fixed;
-		delete[] C_result;
+		free(A_fixed);
+	    free(B_fixed);
+	    free(Cin_fixed);
 	}
 
 	cout << "\nBest SNR: " << best_snr << " dB at scale " << best_scale << endl;
