@@ -60,18 +60,17 @@ int main(int argc, char* argv[])
 	int bestScale=-1;
 	float bestSNR= -10000.0;
 
-
 	for(int scale=1; scale < 32; scale++){
-		long long int* A_fixed = (long long int*)malloc(tst_dim_M * tst_dim_K * sizeof(long long int));	// Fixed point arrays
-	    long long int* B_fixed = (long long int*)malloc(tst_dim_K * tst_dim_N * sizeof(long long int));
-		long long int* Cin_fixed = (long long int*)calloc(tst_dim_M * tst_dim_N, sizeof(long long int)); // Calloc to clean the memory
+		long int* A_fixed = (long int*)malloc(tst_dim_M * tst_dim_K * sizeof(long int));	// Fixed point arrays
+	    long int* B_fixed = (long int*)malloc(tst_dim_K * tst_dim_N * sizeof(long int));
+		long int* Cin_fixed = (long int*)calloc(tst_dim_M * tst_dim_N, sizeof(long int)); // Calloc to clean the memory
 
 		mm_float_to_fixed(tst_matrix_A, A_fixed, tst_dim_M, tst_dim_K, scale);	// Populate fixed-point A and B
 		mm_float_to_fixed(tst_matrix_B, B_fixed, tst_dim_K, tst_dim_N, scale);
 
 		fixed_cpu_gemm_nn(0, 0, tst_dim_M, tst_dim_N, tst_dim_K, ALPHA, A_fixed, lda, B_fixed, ldb, BETA, Cin_fixed, ldc);	// gemm fixed
 
-		mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale*2);	// Convert output back to fixed, double scale
+		mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale<<1);	// Convert output back to fixed, double scale
 
 		float snr = matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M, tst_dim_N);
 

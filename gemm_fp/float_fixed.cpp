@@ -1,16 +1,16 @@
 #include "float_fixed.h"
 #include <math.h>
 
-int roundup(float fp_number)
+long int roundup(float fp_number)
 {
-	long long int	fx_number	=	(long long int)fp_number;
+	long int	fx_number	=	(long int)fp_number;
 
 	if(fp_number-fx_number>=0.5)	fx_number++;
 
 	return	fx_number;
 }
 
-void mm_float_to_fixed (float* A_float, long long int* A_fixed, int M, int K, int scale) {
+void mm_float_to_fixed (float* A_float, long int* A_fixed, int M, int K, int scale) {
 	int length = M*K;
 
 	for (int i=0; i<length; i++) {
@@ -19,7 +19,7 @@ void mm_float_to_fixed (float* A_float, long long int* A_fixed, int M, int K, in
 }
 
 /** Fixed to floating point */
-void mm_fixed_to_float (long long int* A_fixed, float* A_float, int M, int K, int scale) {
+void mm_fixed_to_float (long int* A_fixed, float* A_float, int M, int K, int scale) {
 	int length = M*K;
 
 	for (int i=0; i<length; i++) {

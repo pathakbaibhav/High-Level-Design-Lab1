@@ -9,9 +9,9 @@ void cpu_gemm_nn(int TA, int TB, int M, int N, int K, float ALPHA,
 
 /** Fixed point gemm */
 void fixed_cpu_gemm_nn(int TA, int TB, int M, int N, int K, float ALPHA,
-        long long int *A, int lda,
-        long long int *B, int ldb,
+        long int *A, int lda,
+        long int *B, int ldb,
         float BETA,
-        long long int *C, int ldc);
+        long int *C, int ldc);
 
 #endif
