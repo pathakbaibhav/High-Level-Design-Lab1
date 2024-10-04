@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
 		mm_fixed_to_float(Cin_fixed, tst_matrix_Cin, tst_dim_M, tst_dim_N, scale*2);
 
 		// Calculate SNR
-		snr = calculate_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M * tst_dim_N);
+		snr = matrix_snr(tst_matrix_Cin, tst_matrix_Cout, tst_dim_M, tst_dim_N);
 		printf("SNR for fixed gemm is %.10f dB with scale=%d\n", snr, scale);	// SNR 
 
 		if (snr > best_snr) {
