@@ -27,7 +27,7 @@ car: 40%
 
 We want to better understand the performance of Darknet and the bottlenecks that exist in its existing codebase. To do this, we use Darknet's included profiling feature. The outputted performance summary has information on how many times each instruction is called, how much time it takes to execute, and what percentage of the program's runtime is dominated by it. For a non-optimized Darknet, we found the following results for the top 10 instructions:
 
-|   % seconds   | cumulative seconds | self seconds  | calls   | self s/call | total s/call | name                                     |
+|   % seconds   | Cumulative Seconds | Self Seconds  | Calls   | Self s/call | Total s/call | Name                                     |
 |-------|------------|-------|---------|--------|-------|------------------------------------------|
 | 95.56 | 7.10       | 7.10  | 3694    | 0.00   | 0.00  | gemm_nn                                  |
 |  0.81 | 7.16       | 0.06  | 6       | 0.01   | 0.01  | forward_maxpool_layer_avx               |
@@ -95,4 +95,84 @@ After implementing our fixed point GEMM function in Darknet, we evaluated its ac
 
 So, we had to tune it again, this time optimizing for the MaP rather than the SNR. We found that `scale=10` led to a MaP of 1.000, meaning that our Darknet with the fixed-point GEMM performs as well as the original floating point version. 
 
+## 3. Profiling Darknet with Fixed-Point GEMM
 
+Profiling Darknet with the Fixed-Point GEMM presented the following results. We observe that our gemm_fixed_point takes longer overall than the original floating point implementation. There are different explanations for this, but it's worth noting that we are profiling this on a modern PC with strong floating-point hardware. This results would likely look much different on a lighter-weight system. 
+
+| % Time | Cumulative Seconds | Self Seconds | Calls      | Self s/Call | Total s/Call | Function Name                |
+|--------|--------------------|--------------|------------|-------------|--------------|------------------------------|
+| 92.07  | 7.31               | 7.31         | 13         | 0.56        | 0.56         | gemm_fixed_point           |
+| 2.77   | 7.53               | 0.22         | 29,568,944 | 0.00        | 0.00         | roundup                    |
+| 0.63   | 7.58               | 0.05         | 26         | 0.00        | 0.01         | mm_float_to_fixed          |
+| 0.63   | 7.63               | 0.05         | 6          | 0.01        | 0.01         | forward_maxpool_layer_avx   |
+| 0.50   | 7.67               | 0.04         | 9          | 0.00        | 0.01         | im2col_cpu_ext             |
+| 0.38   | 7.70               | 0.03         | 20,361,120 | 0.00        | 0.00         | is_a_ge_zero_and_a_lt_b    |
+| 0.38   | 7.73               | 0.03         | 41,472     | 0.00        | 0.00         | stbiw__jpg_processDU       |
+| 0.38   | 7.76               | 0.03         |            |             |              | _init                      |
+| 0.25   | 7.78               | 0.02         | 663,552    | 0.00        | 0.00         | stbiw__jpg_DCT             |
+| 0.25   | 7.80               | 0.02         | 761        | 0.00        | 0.00         | load_image_stb             |
+| 0.25   | 7.82               | 0.02         | 13         | 0.00        | 0.00         | add_bias                   |
+
+## 4. Further Optimizations
+
+We tried to implement some different optimizations here, but ultimatly turned up unsuccessful with all of them. 
+
+### 4.1. Idea 1: Making all Conv2D Layers Fixed-Point
+
+A simple backtrace of our `gemm_fixed_point` function showed that it is only being used by the Convolution layers: 
+
+```console
+(gdb) backtrace
+#0  gemm_fixed_point (TA=0, TB=0, M=16, N=173056, K=27, ALPHA=1, A=0xaaaaaabfb990, lda=27, 
+    B=0xffffeae00010, ldb=173056, BETA=1, C=0xffffea200010, ldc=173056) at ./src/gemm.c:148
+#1  0x0000aaaaaaaaa2b8 in gemm (TA=0, TB=0, M=16, N=173056, K=27, ALPHA=1, A=0xaaaaaabc0960, lda=27, 
+    B=0xfffff1e00010, ldb=173056, BETA=1, C=0xfffff6e00010, ldc=173056) at ./src/gemm.c:177
+#2  0x0000aaaaaaab55a0 in forward_convolutional_layer ()
+#3  0x0000aaaaaab07ea4 in forward_network ()
+#4  0x0000aaaaaab0922c in network_predict ()
+#5  0x0000aaaaaab31618 in validate_detector_map ()
+#6  0x0000aaaaaab33b70 in run_detector ()
+#7  0x0000aaaaaaaa5140 in main ()
+(gdb) 
+```
+
+We also observe that many convolution layers are sequential (max pooling layers generally won't be affected by a change to fixed point):
+
+```
+ layer   filters  size/strd(dil)      input                output
+   0 conv     16       3 x 3/ 1    416 x 416 x   3 ->  416 x 416 x  16 0.150 BF
+   1 max                2x 2/ 2    416 x 416 x  16 ->  208 x 208 x  16 0.003 BF
+   2 conv     32       3 x 3/ 1    208 x 208 x  16 ->  208 x 208 x  32 0.399 BF
+   3 max                2x 2/ 2    208 x 208 x  32 ->  104 x 104 x  32 0.001 BF
+   4 conv     64       3 x 3/ 1    104 x 104 x  32 ->  104 x 104 x  64 0.399 BF
+   5 max                2x 2/ 2    104 x 104 x  64 ->   52 x  52 x  64 0.001 BF
+   6 conv    128       3 x 3/ 1     52 x  52 x  64 ->   52 x  52 x 128 0.399 BF
+   7 max                2x 2/ 2     52 x  52 x 128 ->   26 x  26 x 128 0.000 BF
+   8 conv    256       3 x 3/ 1     26 x  26 x 128 ->   26 x  26 x 256 0.399 BF
+   9 max                2x 2/ 2     26 x  26 x 256 ->   13 x  13 x 256 0.000 BF
+  10 conv    512       3 x 3/ 1     13 x  13 x 256 ->   13 x  13 x 512 0.399 BF
+  11 max                2x 2/ 1     13 x  13 x 512 ->   13 x  13 x 512 0.000 BF
+  12 conv   1024       3 x 3/ 1     13 x  13 x 512 ->   13 x  13 x1024 1.595 BF
+  13 conv    256       1 x 1/ 1     13 x  13 x1024 ->   13 x  13 x 256 0.089 BF
+  14 conv    512       3 x 3/ 1     13 x  13 x 256 ->   13 x  13 x 512 0.399 BF
+  15 conv    255       1 x 1/ 1     13 x  13 x 512 ->   13 x  13 x 255 0.044 BF
+  16 yolo
+[yolo] params: iou loss: mse (2), iou_norm: 0.75, obj_norm: 1.00, cls_norm: 1.00, delta_norm: 1.00, scale_x_y: 1.00
+  17 route  13 		                           ->   13 x  13 x 256 
+  18 conv    128       1 x 1/ 1     13 x  13 x 256 ->   13 x  13 x 128 0.011 BF
+  19 upsample                 2x    13 x  13 x 128 ->   26 x  26 x 128
+  20 route  19 8 	                           ->   26 x  26 x 384 
+  21 conv    256       3 x 3/ 1     26 x  26 x 384 ->   26 x  26 x 256 1.196 BF
+  22 conv    255       1 x 1/ 1     26 x  26 x 256 ->   26 x  26 x 255 0.088 BF
+  23 yolo
+```
+
+With this information we believe it should be possible to make one float-to-fixed conversion in `network_predict()` prior to the convolution layers, and one fixed-to-float conversion after the convolution layers (and before the yolo layer). Ultimately we were not able to implement this as there is a lot of complexity buried inside each layer. This optimization is certainly doable, but more time/effort is needed to implement it.
+
+### 4.2. Performing float-to-fixed in `im2col`. 
+
+This is an idea that got thrown around a lot in lecture. We didn't explore it much as we were more committed to the previous idea. We need to spend more time thinking about this one to decide if it is a better option than 4.1.
+
+## 5. What's Next?
+
+On modern processors, using fixed-point operations instead of floating-point operations may not be faster. Floating point units do their job well, especially on modern PCs like those we used to run all of these tests. Additionally, fixed-point hardware is consistantly busy with the countless other fixed-point tasks that a system demands (addressing, etc.). The motivation of this project is to eventually implement fixed-point GEMM on a FPGA, and what we have done here presents a solid starting point for that goal. 
