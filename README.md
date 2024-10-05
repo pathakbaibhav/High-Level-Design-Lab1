@@ -1,3 +1,11 @@
+## Note about submodules: 
+Things were working before, but I messed with the gitmodules during a merge and now they're not :(  
+If the darknet folder is empty, run the following commands from the `lab1-baibhav-and-robby` directory to fix things:
+```
+git submodule init
+git submodule update
+```
+
 # EECE 7368 Lab 1
 # Darknet Profiling and Floating to Fixed Conversion
 
