@@ -101,6 +101,8 @@ So, we had to tune it again, this time optimizing for the MaP rather than the SN
 Darknet with Floating-Point GEMM: `data/dog.jpg: Predicted in 345.221000 milli-seconds.`
 Darknet with Fixed-Point GEMM: `data/dog.jpg: Predicted in 702.981000 milli-seconds.`
 
+
+### 3.2. Profiling Darknet
 Profiling Darknet with the Fixed-Point GEMM presented the following results. We observe that our gemm_fixed_point takes longer overall than the original floating point implementation. There are different explanations for this, but it's worth noting that we are profiling this on a modern PC with strong floating-point hardware. This results would likely look much different on a lighter-weight system. 
 
 | % Time | Cumulative Seconds | Self Seconds | Calls      | Self s/Call | Total s/Call | Function Name                |
