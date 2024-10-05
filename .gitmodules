@@ -1,3 +1,6 @@
 [submodule "darknet-baibhav-and-robby"]
 	path = darknet-baibhav-and-robby
 	url = https://github.com/neu-ece-7368-f24/darknet-baibhav-and-robby
+[submodule "darknet"]
+	path = darknet
+	url = git@github.com:neu-ece-7368-f24/darknet-baibhav-and-robby.git
