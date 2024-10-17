@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
+#include <cmath>
 
 #include "gemm_cpu_fp.h"
 #include "testData.h"
