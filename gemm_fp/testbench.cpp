@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
-#include <cmath.h>
+#include <cmath>
 
 #include "gemm_cpu_fp.h"
 #include "testData.h"
@@ -21,7 +21,7 @@ float matrix_snr(const float* uut_gemm_cout, const float* tst_matrix_Cout, int M
 
     if (noise_power == 0)	return INFINITY;						// To handle perfect match
 
-    float snr = 10 * std::log10f(signal_power / noise_power); // SNR in dB
+    float snr = 10 * std::log10(signal_power / noise_power); // SNR in dB
   
     return snr;
 }
