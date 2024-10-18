@@ -1,3 +1,4 @@
 [submodule "darknet"]
 	path = darknet
 	url = git@github.com:neu-ece-7368-f24/darknet-baibhav-and-robby.git
+	branch = gemm-fp-cpu
